@@ -275,6 +275,12 @@ public class KafkaServiceConfiguration extends ServiceConfiguration {
     )
     private int brokerLookupTimeoutMs = 30_000;
 
+    @FieldContext(
+            category = CATEGORY_KOP,
+            doc = "Use readCompacted for topic cursors. Default is false"
+    )
+    private boolean topicReadCompacted = false;
+
     // Kafka SSL configs
     @FieldContext(
         category = CATEGORY_KOP_SSL,

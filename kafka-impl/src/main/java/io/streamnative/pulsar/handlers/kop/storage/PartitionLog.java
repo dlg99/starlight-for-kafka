@@ -1098,7 +1098,7 @@ public class PartitionLog {
 
         // The future that is returned by getTopicConsumerManager is always completed normally
         KafkaTopicConsumerManager tcm = new KafkaTopicConsumerManager("purge-aborted-tx",
-                true, persistentTopic);
+                true, persistentTopic, kafkaConfig.isTopicReadCompacted());
         future.whenComplete((___, error) -> {
             // release resources in any case
             try {
@@ -1228,7 +1228,7 @@ public class PartitionLog {
 
             // The future that is returned by getTopicConsumerManager is always completed normally
             KafkaTopicConsumerManager tcm = new KafkaTopicConsumerManager("recover-tx",
-                    true, persistentTopic);
+                    true, persistentTopic, kafkaConfig.isTopicReadCompacted());
             future.whenComplete((___, error) -> {
                 // release resources in any case
                 try {

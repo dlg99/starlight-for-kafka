@@ -41,13 +41,17 @@ public class KafkaTopicManager {
 
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    KafkaTopicManager(KafkaRequestHandler kafkaRequestHandler, KafkaTopicLookupService kafkaTopicLookupService) {
+    private final boolean readCompacted;
+
+    KafkaTopicManager(KafkaRequestHandler kafkaRequestHandler, KafkaTopicLookupService kafkaTopicLookupService,
+                      boolean readCompacted) {
         this.requestHandler = kafkaRequestHandler;
         PulsarService pulsarService = kafkaRequestHandler.getPulsarService();
         this.brokerService = pulsarService.getBrokerService();
         this.internalServerCnx = new InternalServerCnx(requestHandler);
         this.lookupClient = kafkaRequestHandler.getLookupClient();
         this.kafkaTopicLookupService = kafkaTopicLookupService;
+        this.readCompacted = readCompacted;
      }
 
     // update Ctx information, since at internalServerCnx create time there is no ctx passed into kafkaRequestHandler.
@@ -82,7 +86,8 @@ public class KafkaTopicManager {
                             log.debug("[{}] Call getTopicConsumerManager for {}, and create TCM for {}.",
                                     requestHandler.ctx.channel(), topicName, persistentTopic);
                         }
-                        tcmFuture.complete(new KafkaTopicConsumerManager(requestHandler, persistentTopic.get()));
+                        tcmFuture.complete(new KafkaTopicConsumerManager(requestHandler, persistentTopic.get(),
+                                readCompacted));
                     } else {
                         if (throwable != null) {
                             log.error("[{}] Failed to getTopicConsumerManager caused by getTopic '{}' throws {}",

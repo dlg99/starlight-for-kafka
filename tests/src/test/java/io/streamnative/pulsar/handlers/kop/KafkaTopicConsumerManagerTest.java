@@ -72,8 +72,12 @@ import org.testng.annotations.Test;
 @Slf4j
 public class KafkaTopicConsumerManagerTest extends KopProtocolHandlerTestBase {
 
-    private KafkaTopicManager kafkaTopicManager;
-    private KafkaRequestHandler kafkaRequestHandler;
+    protected KafkaTopicManager kafkaTopicManager;
+    protected KafkaRequestHandler kafkaRequestHandler;
+
+    public boolean isReadCompacted() {
+        return false;
+    }
 
     @BeforeMethod
     @Override
@@ -89,7 +93,8 @@ public class KafkaTopicConsumerManagerTest extends KopProtocolHandlerTestBase {
         kafkaRequestHandler.ctx = mockCtx;
 
         kafkaTopicManager = new KafkaTopicManager(kafkaRequestHandler,
-                new KafkaTopicLookupService(pulsar.getBrokerService(), mock(KopBrokerLookupManager.class)));
+                new KafkaTopicLookupService(pulsar.getBrokerService(), mock(KopBrokerLookupManager.class)),
+                isReadCompacted());
         kafkaTopicManager.setRemoteAddress(InternalServerCnx.MOCKED_REMOTE_ADDRESS);
     }
 
@@ -99,7 +104,7 @@ public class KafkaTopicConsumerManagerTest extends KopProtocolHandlerTestBase {
         super.internalCleanup();
     }
 
-    private String registerPartitionedTopic(final String topic) throws Exception {
+    protected String registerPartitionedTopic(final String topic) throws Exception {
         admin.topics().createPartitionedTopic(topic, 1);
         admin.lookups().lookupPartitionedTopic(topic);
         String partitionName = TopicName.get(topic).getPartition(0).toString();

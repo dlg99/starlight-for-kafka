@@ -372,7 +372,8 @@ public class KafkaRequestHandler extends KafkaCommandDecoder {
         this.tlsEnabled = tlsEnabled;
         this.advertisedEndPoint = advertisedEndPoint;
         this.skipMessagesWithoutIndex = skipMessagesWithoutIndex;
-        this.topicManager = new KafkaTopicManager(this, kafkaTopicLookupService);
+        this.topicManager = new KafkaTopicManager(this, kafkaTopicLookupService,
+                kafkaConfig.isTopicReadCompacted());
         this.defaultNumPartitions = kafkaConfig.getDefaultNumPartitions();
         this.maxReadEntriesNum = kafkaConfig.getMaxReadEntriesNum();
         this.currentConnectedGroup = new ConcurrentHashMap<>();

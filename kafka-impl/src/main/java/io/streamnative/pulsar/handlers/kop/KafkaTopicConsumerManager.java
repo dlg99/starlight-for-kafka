@@ -68,19 +68,23 @@ public class KafkaTopicConsumerManager implements Closeable {
 
     private final String description;
 
-    KafkaTopicConsumerManager(KafkaRequestHandler requestHandler, PersistentTopic topic) {
+    private final boolean readCompacted;
+
+    KafkaTopicConsumerManager(KafkaRequestHandler requestHandler, PersistentTopic topic, boolean readCompacted) {
         this(requestHandler.ctx.channel() + "",
                 requestHandler.isSkipMessagesWithoutIndex(),
-                topic);
+                topic, readCompacted);
     }
 
-    public KafkaTopicConsumerManager(String description, boolean skipMessagesWithoutIndex, PersistentTopic topic) {
+    public KafkaTopicConsumerManager(String description, boolean skipMessagesWithoutIndex, PersistentTopic topic,
+                                     boolean readCompacted) {
         this.topic = topic;
         this.cursors = new ConcurrentHashMap<>();
         this.createdCursors = new ConcurrentHashMap<>();
         this.lastAccessTimes = new ConcurrentHashMap<>();
         this.description =  description;
         this.skipMessagesWithoutIndex = skipMessagesWithoutIndex;
+        this.readCompacted = readCompacted;
     }
 
     // delete expired cursors, so backlog can be cleared.
@@ -156,7 +160,7 @@ public class KafkaTopicConsumerManager implements Closeable {
         lastAccessTimes.remove(offset);
         final CompletableFuture<Pair<ManagedCursor, Long>> cursorFuture = cursors.remove(offset);
         if (cursorFuture == null) {
-            return asyncCreateCursorIfNotExists(offset);
+            return asyncGetCursorByOffset(offset);
         }
 
         if (log.isDebugEnabled()) {
@@ -164,17 +168,6 @@ public class KafkaTopicConsumerManager implements Closeable {
                     description, offset, cursors.size());
         }
         return cursorFuture;
-    }
-
-    private CompletableFuture<Pair<ManagedCursor, Long>> asyncCreateCursorIfNotExists(long offset) {
-        if (closed.get()) {
-            return null;
-        }
-        cursors.putIfAbsent(offset, asyncGetCursorByOffset(offset));
-
-        // notice:  above would add a <offset, null-Pair>
-        lastAccessTimes.remove(offset);
-        return cursors.remove(offset);
     }
 
     public void add(long offset, Pair<ManagedCursor, Long> pair) {

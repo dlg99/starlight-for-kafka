@@ -301,6 +301,11 @@ public abstract class KopProtocolHandlerTestBase {
         }
     }
 
+    protected void internalSetupTopicCompaction() throws Exception {
+        // we don't want user topic to use compaction
+        admin.namespaces().removeCompactionThreshold(conf.getKafkaTenant() + "/" + conf.getKafkaNamespace());
+    }
+
     protected final void internalSetup() throws Exception {
         internalSetup(true);
     }
@@ -347,8 +352,7 @@ public abstract class KopProtocolHandlerTestBase {
                 MetadataUtils.createTxnMetadataIfMissing(conf.getKafkaMetadataTenant(), admin, clusterData, this.conf);
             }
 
-            // we don't want user topic to use compaction
-            admin.namespaces().removeCompactionThreshold(conf.getKafkaTenant() + "/" + conf.getKafkaNamespace());
+            internalSetupTopicCompaction();
 
             if (conf.isKafkaManageSystemNamespaces()) {
 
