@@ -38,6 +38,7 @@ import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.pulsar.broker.service.persistent.PersistentTopic;
+import org.apache.pulsar.common.api.proto.CommandSubscribe;
 import org.apache.pulsar.common.util.FutureUtil;
 
 /**
@@ -259,11 +260,21 @@ public class KafkaTopicConsumerManager implements Closeable {
                         description, cursorName, offset, position, previous);
             }
             try {
-                final ManagedCursor newCursor = ledger.newNonDurableCursor(previous, cursorName);
-                createdCursors.putIfAbsent(newCursor.getName(), newCursor);
+                final ManagedCursor cursor = createdCursors.computeIfAbsent(cursorName, name -> {
+                    ManagedCursor newCursor;
+                    try {
+                        newCursor = ledger.newNonDurableCursor(previous, cursorName,
+                                CommandSubscribe.InitialPosition.Latest, readCompacted);
+                    } catch (ManagedLedgerException e) {
+                        log.error("Couldn't create a cursor for topic {} at offset {} - {}",
+                                topic.getName(), offset, previous, e);
+                        throw new RuntimeException(e);
+                    }
+                    return newCursor;
+                });
                 lastAccessTimes.put(offset, System.currentTimeMillis());
-                return Pair.of(newCursor, offset);
-            } catch (ManagedLedgerException e) {
+                return Pair.of(cursor, offset);
+            } catch (RuntimeException e) {
                 log.error("[{}] Error new cursor for topic {} at offset {} - {}. will cause fetch data error.",
                         description, topic.getName(), offset, previous, e);
                 return null;
