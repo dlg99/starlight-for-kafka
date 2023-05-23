@@ -303,6 +303,7 @@ public abstract class KopProtocolHandlerTestBase {
 
     protected void internalSetupTopicCompaction() throws Exception {
         // we don't want user topic to use compaction
+        conf.setTopicReadCompacted(false);
         admin.namespaces().removeCompactionThreshold(conf.getKafkaTenant() + "/" + conf.getKafkaNamespace());
     }
 

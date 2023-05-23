@@ -87,7 +87,7 @@ public class KafkaTopicManager {
                                     requestHandler.ctx.channel(), topicName, persistentTopic);
                         }
                         tcmFuture.complete(new KafkaTopicConsumerManager(requestHandler, persistentTopic.get(),
-                                readCompacted));
+                                readCompacted /*&& persistentTopic.get().isCompactionEnabled()*/));
                     } else {
                         if (throwable != null) {
                             log.error("[{}] Failed to getTopicConsumerManager caused by getTopic '{}' throws {}",

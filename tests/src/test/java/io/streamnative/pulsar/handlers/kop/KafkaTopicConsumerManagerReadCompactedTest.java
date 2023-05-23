@@ -16,6 +16,12 @@ package io.streamnative.pulsar.handlers.kop;
 
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.bookkeeper.mledger.Entry;
+import org.apache.bookkeeper.mledger.ManagedCursor;
+import org.apache.bookkeeper.mledger.ManagedLedger;
+import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl;
+import org.apache.bookkeeper.mledger.impl.PositionImpl;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -29,13 +35,16 @@ import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SubscriptionMode;
+import org.apache.pulsar.common.api.proto.CommandSubscribe;
 import org.awaitility.Awaitility;
 import org.testng.annotations.Test;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -56,6 +65,7 @@ public class KafkaTopicConsumerManagerReadCompactedTest extends KafkaTopicConsum
 
     @Override
     protected void internalSetupTopicCompaction() throws Exception {
+        conf.setTopicReadCompacted(true);
         admin.namespaces().setCompactionThreshold(conf.getKafkaTenant() + "/" + conf.getKafkaNamespace(), 25);
     }
 
@@ -68,9 +78,7 @@ public class KafkaTopicConsumerManagerReadCompactedTest extends KafkaTopicConsum
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
-        @Cleanup
         final KafkaProducer<Integer, String> producer = new KafkaProducer<>(props);
-
 
         final int numMessages = 5;
         String messagePrefix = "testReadCompacted_message_1_";
@@ -84,9 +92,44 @@ public class KafkaTopicConsumerManagerReadCompactedTest extends KafkaTopicConsum
             String message = messagePrefix2 + i;
             producer.send(new ProducerRecord<>(topicName, i, message)).get();
         }
+        producer.close();
 
         admin.topics().triggerCompaction(fullTopicName);
         waitForCompactionToFinish(fullTopicName, numMessages);
+
+
+//        CompletableFuture<KafkaTopicConsumerManager> tcm = kafkaTopicManager.getTopicConsumerManager(fullTopicName);
+//        KafkaTopicConsumerManager topicConsumerManager = tcm.get();
+//
+//        ManagedLedgerImpl ledger = (ManagedLedgerImpl)topicConsumerManager.getTopic().getManagedLedger();
+//
+//        ledger.getCursors().forEach(cursor -> {
+//            log.info("cursor: {}", cursor);
+//            if (cursor.getName().equals("__compaction")) {
+//                log.info("cursor: {}", cursor);
+//                cursor.getMarkDeletedPosition()
+//            }
+//        });
+//        final PositionImpl previous = ledger.getPreviousPosition(PositionImpl.EARLIEST);
+//        ManagedCursor cursor = ledger.newNonDurableCursor(previous,
+//                "testReadCompacted_cursor",
+//                CommandSubscribe.InitialPosition.Latest,
+//                true);
+
+        // before a read, first get cursor of offset.
+        //Pair<ManagedCursor, Long> cursorPair = topicConsumerManager.removeCursorFuture(-1L).get();
+        //ManagedCursor cursor = cursorPair.getLeft();
+//
+//        List<Entry> entries = cursor.readEntries(2 * numMessages);
+//        entries.forEach(entry -> {
+//            log.info("entry: {}", new String(entry.getData()));
+//        });
+//        assertEquals(entries.size(), numMessages);
+
+
+//        CompletableFuture<KafkaTopicConsumerManager> tcm = kafkaTopicManager.getTopicConsumerManager(fullTopicName);
+//        KafkaTopicConsumerManager topicConsumerManager = tcm.get();
+//        topicConsumerManager.removeCursorFuture(0L).get();
 
         @Cleanup
         final KafkaConsumer<String, String> consumer = new KafkaConsumer<>(newKafkaConsumerProperties());
@@ -114,7 +157,7 @@ public class KafkaTopicConsumerManagerReadCompactedTest extends KafkaTopicConsum
                 .serviceUrl("pulsar://localhost:" + getBrokerPort())
                 .build();
         Awaitility.waitAtMost(30, TimeUnit.SECONDS).untilAsserted(() -> {
-            //Thread.sleep(100);
+            Thread.sleep(100);
             Consumer<byte[]> pcons = cl.newConsumer(Schema.BYTES)
                     .topic(fullTopicName)
                     .subscriptionMode(SubscriptionMode.NonDurable)
